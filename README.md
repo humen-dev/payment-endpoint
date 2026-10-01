@@ -45,6 +45,18 @@ before each test.
   provider mock fails the test if it is called, so every case also checks that no card is charged.
 * `tests/test_provider.py` — the provider mock.
 
+## Lint
+
+The code is formatted with Black and isort and checked with flake8 (line length 88).
+
+```bash
+make format   # sort imports and format the code
+make lint     # check only, change nothing
+make check    # lint + tests
+```
+
+Without `make`, run the same tools directly, for example `black --check shop tests migrations wsgi.py`.
+
 ## API
 
 ### `POST /carts/<cart_id>/payments`

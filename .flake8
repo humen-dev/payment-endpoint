@@ -1,0 +1,12 @@
+[flake8]
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    .env,
+    migrations
+
+max-line-length = 88
+# E203: whitespace before ':' conflicts with Black's slice formatting.
+extend-ignore = E203
