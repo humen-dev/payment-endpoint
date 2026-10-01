@@ -22,7 +22,7 @@ from shop.errors import BadGateway, Conflict, NotFound, Unprocessable
 from shop.extensions import db
 from shop.models import Cart, CartStatus, Payment, PaymentStatus, UserPaymentMethod
 from shop.payments import provider
-from shop.payments.totals import calculate_cart_total
+from shop.payments.totals import CartTotal, calculate_cart_total
 
 
 def start_payment(
@@ -90,6 +90,21 @@ def _payment_in_progress() -> Conflict:
 def _create_pending_payment(
     cart: Cart, idempotency_key: str, payment_method_id: uuid.UUID | None
 ) -> Payment:
+    total = _payable_total(cart)
+    payment = Payment(
+        cart=cart,
+        user_id=cart.user_id,
+        payment_method=_find_payment_method(cart.user_id, payment_method_id),
+        amount=total.amount,
+        currency=total.currency,
+        idempotency_key=idempotency_key,
+    )
+    _save_pending_payment(payment)
+    return payment
+
+
+def _payable_total(cart: Cart) -> CartTotal:
+    """Returns the total of the cart, or raises if the cart cannot be paid."""
     if cart.status != CartStatus.ACTIVE:
         raise Conflict(
             "cart_not_active", f"The cart is {cart.status}, it cannot be paid."
@@ -102,25 +117,7 @@ def _create_pending_payment(
         raise Unprocessable(
             "nothing_to_pay", "The cart total must be greater than zero."
         )
-
-    payment = Payment(
-        cart=cart,
-        user_id=cart.user_id,
-        payment_method=_find_payment_method(cart.user_id, payment_method_id),
-        amount=total.amount,
-        currency=total.currency,
-        idempotency_key=idempotency_key,
-    )
-    db.session.add(payment)
-    try:
-        db.session.commit()
-    except IntegrityError as error:
-        db.session.rollback()
-        # Another request created a payment for this cart or with this key first.
-        if isinstance(error.orig, UniqueViolation):
-            raise _payment_in_progress()
-        raise
-    return payment
+    return total
 
 
 def _find_payment_method(
@@ -140,6 +137,19 @@ def _find_payment_method(
     if payment_method is None:
         raise Unprocessable("payment_method_not_found", "No payment method to charge.")
     return payment_method
+
+
+def _save_pending_payment(payment: Payment) -> None:
+    """Commits the payment. The commit also releases the cart lock."""
+    db.session.add(payment)
+    try:
+        db.session.commit()
+    except IntegrityError as error:
+        db.session.rollback()
+        # Another request created a payment for this cart or with this key first.
+        if isinstance(error.orig, UniqueViolation):
+            raise _payment_in_progress()
+        raise
 
 
 def _charge(payment: Payment) -> Payment:
