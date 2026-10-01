@@ -16,5 +16,30 @@ services:
       timeout: 5s
       retries: 15
 
+  app:
+    build:
+      context: .
+      target: app
+    environment:
+      DATABASE_URL: postgresql+psycopg://shop:shop@db:5432/shop
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Runs the test suite in Docker: `docker compose run --rm tests`.
+  # The profile keeps it out of a plain `docker compose up`.
+  tests:
+    build:
+      context: .
+      target: dev
+    profiles: ["test"]
+    environment:
+      TEST_DATABASE_URL: postgresql+psycopg://shop:shop@db:5432/shop_test
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   db-data:

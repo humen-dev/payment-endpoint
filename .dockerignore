@@ -1,0 +1,8 @@
+.git
+.idea
+.venv
+venv
+.env
+.pytest_cache
+__pycache__
+*.py[co]

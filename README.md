@@ -3,37 +3,65 @@
 The payment part of an online shop: a PostgreSQL schema for payments and an HTTP endpoint
 that starts the payment for a cart.
 
-Stack: Python 3.12, Flask, SQLAlchemy 2, Alembic, PostgreSQL 16, pytest.
+Stack: Python 3.12, Flask, SQLAlchemy 2, Alembic, PostgreSQL 16, gunicorn, pytest, Docker.
 
-## Run
+## Run with Docker
 
-Requirements: Python 3.12+, Docker.
+The only requirement is Docker. This builds the app image, starts PostgreSQL, applies the
+migrations (base schema with sample data, then the payments table) and serves the app on
+http://localhost:8000:
 
 ```bash
-docker compose up -d --wait               # PostgreSQL on localhost:5434 (databases: shop, shop_test)
-python -m venv .venv
-source .venv/bin/activate                 # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
-alembic upgrade head                      # base schema + sample data, then the payments table
-flask --app wsgi run
+docker compose up -d --build --wait       # or: make up
 ```
 
 Pay for the sample cart of Alice (70.00 USD):
 
 ```bash
-curl -i -X POST http://127.0.0.1:5000/carts/c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1/payments \
+curl -i -X POST http://localhost:8000/carts/c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1/payments \
   -H "X-User-Id: 11111111-1111-1111-1111-111111111111" \
   -H "Idempotency-Key: 5f0c2a4e-2b1d-4c1a-9a57-0a3f3b8e7d11"
+```
+
+Run the tests in Docker and stop everything:
+
+```bash
+docker compose run --rm --build tests     # or: make docker-test
+docker compose down                       # or: make down
+```
+
+## Run locally
+
+Requirements: Python 3.12+ and Docker (for PostgreSQL only).
+
+```bash
+docker compose up -d --wait db            # or: make db. PostgreSQL on localhost:5434
+python -m venv .venv
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+alembic upgrade head
+flask --app wsgi run                      # http://127.0.0.1:5000
+pytest
 ```
 
 The database URLs come from `DATABASE_URL` and `TEST_DATABASE_URL` (see `.env.example`).
 The defaults match `docker-compose.yml`.
 
-## Test
+## Make commands
 
-```bash
-pytest
-```
+| Command            | What it does                                              |
+|--------------------|-----------------------------------------------------------|
+| `make up`          | Build and start PostgreSQL and the app in Docker.         |
+| `make db`          | Start only PostgreSQL, for local development.             |
+| `make down`        | Stop the containers. The database volume is kept.         |
+| `make logs`        | Follow the app logs.                                      |
+| `make docker-test` | Run the tests in Docker.                                  |
+| `make test`        | Run the tests locally (needs `make db`).                  |
+| `make format`      | Sort imports and format the code.                         |
+| `make lint`        | Check imports, formatting and code style.                 |
+| `make check`       | `make lint` and `make test`.                              |
+
+## Test
 
 The tests use a real PostgreSQL database (`shop_test`), because the payment logic depends on
 row locks and unique indexes. The test suite runs the migrations itself and empties the tables
@@ -47,15 +75,8 @@ before each test.
 
 ## Lint
 
-The code is formatted with Black and isort and checked with flake8 (line length 88).
-
-```bash
-make format   # sort imports and format the code
-make lint     # check only, change nothing
-make check    # lint + tests
-```
-
-Without `make`, run the same tools directly, for example `black --check shop tests migrations wsgi.py`.
+The code is formatted with Black and isort and checked with flake8 (line length 88):
+`make format` fixes the code, `make lint` only checks it.
 
 ## API
 
