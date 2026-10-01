@@ -79,10 +79,12 @@ def _replay(
             "This Idempotency-Key was already used for another request.",
         )
     if payment.status == PaymentStatus.PENDING:
-        raise Conflict(
-            "payment_in_progress", "The payment is in progress. Retry later."
-        )
+        raise _payment_in_progress()
     return payment
+
+
+def _payment_in_progress() -> Conflict:
+    return Conflict("payment_in_progress", "The payment is in progress. Retry later.")
 
 
 def _create_pending_payment(
@@ -116,9 +118,7 @@ def _create_pending_payment(
         db.session.rollback()
         # Another request created a payment for this cart or with this key first.
         if isinstance(error.orig, UniqueViolation):
-            raise Conflict(
-                "payment_in_progress", "The payment is in progress. Retry later."
-            )
+            raise _payment_in_progress()
         raise
     return payment
 
