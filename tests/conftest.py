@@ -1,8 +1,9 @@
-"""Tests run against a real PostgreSQL database (TestConfig), migrated with Alembic.
+"""Tests run against a real PostgreSQL database (`TestConfig`), migrated with Alembic.
 
 Test data is written and checked through a separate SQLAlchemy session, like an outside
 observer, so the app's own session state never leaks into the assertions.
 """
+
 from decimal import Decimal
 
 import pytest
@@ -33,7 +34,10 @@ def engine():
 def clean_database(engine):
     with engine.begin() as connection:
         connection.execute(
-            text("TRUNCATE payments, user_payment_methods, cart_items, carts, products, users")
+            text(
+                "TRUNCATE payments, user_payment_methods, cart_items, carts, "
+                "products, users"
+            )
         )
 
 
@@ -90,7 +94,10 @@ def other_user(create):
 def card(create, user):
     return create(
         UserPaymentMethod(
-            user_id=user.id, provider_token="tok_test_visa", last_four="4242", is_default=True
+            user_id=user.id,
+            provider_token="tok_test_visa",
+            last_four="4242",
+            is_default=True,
         )
     )
 
@@ -98,13 +105,17 @@ def card(create, user):
 @pytest.fixture
 def declined_card(create, user):
     return create(
-        UserPaymentMethod(user_id=user.id, provider_token="tok_decline_visa", last_four="0002")
+        UserPaymentMethod(
+            user_id=user.id, provider_token="tok_decline_visa", last_four="0002"
+        )
     )
 
 
 @pytest.fixture
 def make_cart(create):
-    def _make_cart(owner: User, prices: tuple[str, ...] = ("45.00", "12.50", "12.50")) -> Cart:
+    def _make_cart(
+        owner: User, prices: tuple[str, ...] = ("45.00", "12.50", "12.50")
+    ) -> Cart:
         items = [
             CartItem(
                 product=Product(name=f"Product {price}", price=Decimal(price)),
@@ -126,10 +137,14 @@ def cart(make_cart, user):
 
 @pytest.fixture
 def pay(client, user):
-    """Sends the payment request as `user`. A header set to None is left out."""
+    """Sends the payment request as `user`. A header set to `None` is left out."""
 
     def _pay(cart_id, headers=None, json=None):
-        headers = {"X-User-Id": str(user.id), "Idempotency-Key": "key-1", **(headers or {})}
+        headers = {
+            "X-User-Id": str(user.id),
+            "Idempotency-Key": "key-1",
+            **(headers or {}),
+        }
         headers = {name: value for name, value in headers.items() if value is not None}
         return client.post(f"/carts/{cart_id}/payments", headers=headers, json=json)
 

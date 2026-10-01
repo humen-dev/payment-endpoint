@@ -1,4 +1,5 @@
 """ORM mappings. The schema itself is owned by the Alembic migrations."""
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -29,7 +30,9 @@ class User(db.Model):
     email: Mapped[str]
     name: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Product(db.Model):
@@ -41,7 +44,9 @@ class Product(db.Model):
     currency: Mapped[str] = mapped_column(CHAR(3), default="USD")
     stock_quantity: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Cart(db.Model):
@@ -51,7 +56,9 @@ class Cart(db.Model):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(default=CartStatus.ACTIVE)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now()
+    )
 
     items: Mapped[list["CartItem"]] = relationship()
 
@@ -86,7 +93,9 @@ class Payment(db.Model):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     cart_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("carts.id"))
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-    payment_method_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user_payment_methods.id"))
+    payment_method_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_payment_methods.id")
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     currency: Mapped[str] = mapped_column(CHAR(3))
     status: Mapped[str] = mapped_column(default=PaymentStatus.PENDING)
@@ -94,7 +103,9 @@ class Payment(db.Model):
     provider_payment_id: Mapped[str | None]
     failure_reason: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now()
+    )
 
     cart: Mapped[Cart] = relationship()
     payment_method: Mapped[UserPaymentMethod] = relationship()

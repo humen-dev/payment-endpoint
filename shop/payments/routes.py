@@ -42,7 +42,10 @@ def _idempotency_key() -> str:
 
 
 def _payment_method_id() -> uuid.UUID | None:
-    """Reads the optional payment method from the body. No body means the default method."""
+    """Reads the optional payment method from the body.
+
+    No body means the default method.
+    """
     if not request.get_data():
         return None
 
@@ -56,7 +59,9 @@ def _payment_method_id() -> uuid.UUID | None:
     try:
         return uuid.UUID(str(raw_id))
     except ValueError:
-        raise BadRequest("invalid_payment_method_id", "payment_method_id must be a UUID.")
+        raise BadRequest(
+            "invalid_payment_method_id", "payment_method_id must be a UUID."
+        )
 
 
 def _payment_to_json(payment: Payment) -> dict:

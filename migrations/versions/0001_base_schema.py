@@ -4,6 +4,7 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-09-30
 """
+
 from pathlib import Path
 
 from alembic import op

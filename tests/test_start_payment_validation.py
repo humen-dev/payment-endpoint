@@ -1,4 +1,5 @@
 """Requests that must be rejected before the payment provider is called."""
+
 import uuid
 
 import pytest
@@ -109,8 +110,12 @@ def test_user_without_default_payment_method_cannot_pay(pay, cart, declined_card
     assert response.get_json()["error"] == "payment_method_not_found"
 
 
-def test_payment_method_of_another_user_cannot_be_used(pay, cart, card, create, other_user):
-    bobs_card = create(UserPaymentMethod(user_id=other_user.id, provider_token="tok_bob"))
+def test_payment_method_of_another_user_cannot_be_used(
+    pay, cart, card, create, other_user
+):
+    bobs_card = create(
+        UserPaymentMethod(user_id=other_user.id, provider_token="tok_bob")
+    )
 
     response = pay(cart.id, json={"payment_method_id": str(bobs_card.id)})
 

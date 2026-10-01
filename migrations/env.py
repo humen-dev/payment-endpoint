@@ -12,7 +12,7 @@ if config.config_file_name is not None:
 
 
 def database_url() -> str:
-    """An explicitly configured URL (e.g. by the test suite) wins over the app config."""
+    """An explicitly configured URL (e.g. by the tests) wins over the app config."""
     return config.get_main_option("sqlalchemy.url") or Config.SQLALCHEMY_DATABASE_URI
 
 

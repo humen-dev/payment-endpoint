@@ -6,7 +6,9 @@ from shop.payments import provider
 
 
 def charge(token: str) -> provider.ChargeResult:
-    return provider.charge(token=token, amount=Decimal("10.00"), currency="USD", idempotency_key="k")
+    return provider.charge(
+        token=token, amount=Decimal("10.00"), currency="USD", idempotency_key="k"
+    )
 
 
 def test_charges_regular_token():

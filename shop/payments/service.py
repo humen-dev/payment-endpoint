@@ -11,6 +11,7 @@ Double charges are prevented on two levels:
 * the Idempotency-Key: a repeated request gets the result of the first one;
 * the `uq_payments_cart_active` index: one pending or succeeded payment per cart.
 """
+
 import uuid
 
 from psycopg.errors import UniqueViolation
@@ -30,7 +31,7 @@ def start_payment(
     idempotency_key: str,
     payment_method_id: uuid.UUID | None = None,
 ) -> Payment:
-    """Returns a succeeded or failed payment. Never returns a pending one."""
+    """Returns a `succeeded` or `failed` payment. Never returns a `pending` one."""
     cart = _lock_user_cart(user_id, cart_id)
 
     previous_payment = _find_payment_by_idempotency_key(user_id, idempotency_key)
@@ -44,7 +45,9 @@ def start_payment(
 def _lock_user_cart(user_id: uuid.UUID, cart_id: uuid.UUID) -> Cart:
     """Locks the cart row, so concurrent payments for one cart run one after another."""
     cart = db.session.scalars(
-        select(Cart).where(Cart.id == cart_id, Cart.user_id == user_id).with_for_update()
+        select(Cart)
+        .where(Cart.id == cart_id, Cart.user_id == user_id)
+        .with_for_update()
     ).one_or_none()
     # A cart of another user is reported as missing, so we do not reveal that it exists.
     if cart is None:
@@ -52,7 +55,9 @@ def _lock_user_cart(user_id: uuid.UUID, cart_id: uuid.UUID) -> Cart:
     return cart
 
 
-def _find_payment_by_idempotency_key(user_id: uuid.UUID, idempotency_key: str) -> Payment | None:
+def _find_payment_by_idempotency_key(
+    user_id: uuid.UUID, idempotency_key: str
+) -> Payment | None:
     return db.session.scalars(
         select(Payment).where(
             Payment.user_id == user_id, Payment.idempotency_key == idempotency_key
@@ -70,10 +75,13 @@ def _replay(
     )
     if not is_same_request:
         raise Unprocessable(
-            "idempotency_key_reused", "This Idempotency-Key was already used for another request."
+            "idempotency_key_reused",
+            "This Idempotency-Key was already used for another request.",
         )
     if payment.status == PaymentStatus.PENDING:
-        raise Conflict("payment_in_progress", "The payment is in progress. Retry later.")
+        raise Conflict(
+            "payment_in_progress", "The payment is in progress. Retry later."
+        )
     return payment
 
 
@@ -81,13 +89,17 @@ def _create_pending_payment(
     cart: Cart, idempotency_key: str, payment_method_id: uuid.UUID | None
 ) -> Payment:
     if cart.status != CartStatus.ACTIVE:
-        raise Conflict("cart_not_active", f"The cart is {cart.status}, it cannot be paid.")
+        raise Conflict(
+            "cart_not_active", f"The cart is {cart.status}, it cannot be paid."
+        )
     if not cart.items:
         raise Unprocessable("cart_empty", "The cart is empty.")
 
     total = calculate_cart_total(cart)
     if total.amount <= 0:
-        raise Unprocessable("nothing_to_pay", "The cart total must be greater than zero.")
+        raise Unprocessable(
+            "nothing_to_pay", "The cart total must be greater than zero."
+        )
 
     payment = Payment(
         cart=cart,
@@ -104,7 +116,9 @@ def _create_pending_payment(
         db.session.rollback()
         # Another request created a payment for this cart or with this key first.
         if isinstance(error.orig, UniqueViolation):
-            raise Conflict("payment_in_progress", "The payment is in progress. Retry later.")
+            raise Conflict(
+                "payment_in_progress", "The payment is in progress. Retry later."
+            )
         raise
     return payment
 
@@ -137,8 +151,8 @@ def _charge(payment: Payment) -> Payment:
             idempotency_key=str(payment.id),
         )
     except provider.ProviderUnavailableError:
-        # The card may have been charged, so the payment must not be marked as failed:
-        # that would let the user pay again. It stays pending until reconciliation.
+        # The card may have been charged, so the payment must not be marked as `failed`:
+        # that would let the user pay again. It stays `pending` until reconciliation.
         raise BadGateway(
             "provider_unavailable",
             f"The payment provider did not answer. Payment {payment.id} is pending.",

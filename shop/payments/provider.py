@@ -1,10 +1,12 @@
 """Mock of the external payment provider.
 
 The mock is deterministic so that tests and manual checks are predictable:
-* a token that starts with DECLINED_TOKEN_PREFIX is declined;
-* a token that starts with UNAVAILABLE_TOKEN_PREFIX raises ProviderUnavailableError;
+* a token that starts with `DECLINED_TOKEN_PREFIX` is declined;
+* a token that starts with `UNAVAILABLE_TOKEN_PREFIX` raises
+  `ProviderUnavailableError`;
 * any other token is charged.
 """
+
 import uuid
 from dataclasses import dataclass
 from decimal import Decimal
@@ -14,7 +16,10 @@ UNAVAILABLE_TOKEN_PREFIX = "tok_unavailable"
 
 
 class ProviderUnavailableError(Exception):
-    """The provider did not answer (timeout, network error): the card may or may not be charged."""
+    """The provider did not answer (timeout, network error).
+
+    The card may or may not be charged.
+    """
 
 
 @dataclass(frozen=True)
@@ -24,7 +29,12 @@ class ChargeResult:
     failure_reason: str | None = None
 
 
-def charge(token: str, amount: Decimal, currency: str, idempotency_key: str) -> ChargeResult:
+def charge(
+    token: str,
+    amount: Decimal,
+    currency: str,
+    idempotency_key: str,
+) -> ChargeResult:
     """Charges the card behind `token`.
 
     A real provider uses `idempotency_key` to return the first result for a repeated

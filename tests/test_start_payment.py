@@ -1,7 +1,9 @@
-"""Payments that reach the provider: success, decline, provider errors, idempotency, concurrency.
+"""Payments that reach the provider.
 
-Requests that are rejected before the provider call are tested in test_start_payment_validation.py.
+Covers success, decline, provider errors, idempotency and concurrency.
+Requests rejected before the provider call: `test_start_payment_validation.py`.
 """
+
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -30,7 +32,10 @@ def provider_calls(monkeypatch):
 
 @pytest.fixture
 def slow_provider(monkeypatch, provider_calls):
-    """Makes the provider call slow, so parallel requests overlap. Calls are still recorded."""
+    """Makes the provider call slow, so parallel requests overlap.
+
+    Calls are still recorded.
+    """
     recording_charge = provider.charge
 
     def slow_charge(**kwargs):
@@ -43,7 +48,9 @@ def slow_provider(monkeypatch, provider_calls):
 @pytest.fixture
 def unavailable_card(create, user):
     return create(
-        UserPaymentMethod(user_id=user.id, provider_token="tok_unavailable_visa", is_default=True)
+        UserPaymentMethod(
+            user_id=user.id, provider_token="tok_unavailable_visa", is_default=True
+        )
     )
 
 
@@ -62,7 +69,7 @@ def pending_payment(cart, payment_method, idempotency_key) -> Payment:
     )
 
 
-# --- Successful and declined payments ------------------------------------------------------------
+# --- Successful and declined payments -------------------------------------------------
 
 
 def test_pays_cart_with_default_card(pay, cart, card, session, reload, provider_calls):
@@ -93,7 +100,9 @@ def test_pays_cart_with_default_card(pay, cart, card, session, reload, provider_
     ]
 
 
-def test_amount_uses_prices_stored_in_cart_not_current_product_prices(pay, cart, card, create):
+def test_amount_uses_prices_stored_in_cart_not_current_product_prices(
+    pay, cart, card, create
+):
     for item in cart.items:
         item.product.price += Decimal("100.00")
     create(cart)
@@ -105,7 +114,9 @@ def test_amount_uses_prices_stored_in_cart_not_current_product_prices(pay, cart,
 
 
 def test_pays_with_requested_payment_method(pay, cart, card, create, user):
-    other_card = create(UserPaymentMethod(user_id=user.id, provider_token="tok_test_mastercard"))
+    other_card = create(
+        UserPaymentMethod(user_id=user.id, provider_token="tok_test_mastercard")
+    )
 
     response = pay(cart.id, json={"payment_method_id": str(other_card.id)})
 
@@ -127,8 +138,14 @@ def test_declined_card_fails_payment_and_keeps_cart_active(
     assert reload(cart).status == CartStatus.ACTIVE
 
 
-def test_cart_can_be_paid_with_new_key_after_decline(pay, cart, card, declined_card, reload):
-    pay(cart.id, {"Idempotency-Key": "attempt-1"}, {"payment_method_id": str(declined_card.id)})
+def test_cart_can_be_paid_with_new_key_after_decline(
+    pay, cart, card, declined_card, reload
+):
+    pay(
+        cart.id,
+        {"Idempotency-Key": "attempt-1"},
+        {"payment_method_id": str(declined_card.id)},
+    )
 
     response = pay(cart.id, {"Idempotency-Key": "attempt-2"})
 
@@ -136,10 +153,12 @@ def test_cart_can_be_paid_with_new_key_after_decline(pay, cart, card, declined_c
     assert reload(cart).status == CartStatus.CHECKED_OUT
 
 
-# --- Provider does not answer --------------------------------------------------------------------
+# --- Provider does not answer ---------------------------------------------------------
 
 
-def test_provider_error_keeps_payment_pending(pay, cart, unavailable_card, session, reload):
+def test_provider_error_keeps_payment_pending(
+    pay, cart, unavailable_card, session, reload
+):
     response = pay(cart.id)
 
     assert response.status_code == 502
@@ -162,7 +181,7 @@ def test_retry_after_provider_error_does_not_charge_again(
     assert len(provider_calls) == 1
 
 
-# --- Idempotency ---------------------------------------------------------------------------------
+# --- Idempotency ----------------------------------------------------------------------
 
 
 def test_repeated_request_returns_first_result_without_second_charge(
@@ -197,7 +216,9 @@ def test_repeated_declined_request_returns_same_failure(
     assert len(provider_calls) == 1
 
 
-def test_key_reused_for_another_cart_is_rejected(pay, make_cart, user, card, provider_calls):
+def test_key_reused_for_another_cart_is_rejected(
+    pay, make_cart, user, card, provider_calls
+):
     pay(make_cart(user).id)
 
     response = pay(make_cart(user).id)
@@ -222,7 +243,11 @@ def test_key_reused_with_another_payment_method_is_rejected(
 def test_same_key_of_different_users_does_not_conflict(
     pay, cart, card, make_cart, other_user, create
 ):
-    create(UserPaymentMethod(user_id=other_user.id, provider_token="tok_bob", is_default=True))
+    create(
+        UserPaymentMethod(
+            user_id=other_user.id, provider_token="tok_bob", is_default=True
+        )
+    )
     pay(cart.id)
 
     response = pay(make_cart(other_user).id, {"X-User-Id": str(other_user.id)})
@@ -266,7 +291,7 @@ def test_new_key_for_paid_cart_is_rejected(pay, cart, card, session, provider_ca
     assert count_payments(session) == 1
 
 
-# --- Concurrency ---------------------------------------------------------------------------------
+# --- Concurrency ----------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -277,7 +302,11 @@ def test_parallel_requests_charge_cart_once(
 ):
     def send(key):
         headers = {"X-User-Id": str(user.id), "Idempotency-Key": key}
-        return app.test_client().post(f"/carts/{cart.id}/payments", headers=headers).status_code
+        return (
+            app.test_client()
+            .post(f"/carts/{cart.id}/payments", headers=headers)
+            .status_code
+        )
 
     with ThreadPoolExecutor(max_workers=len(keys)) as executor:
         status_codes = sorted(executor.map(send, keys))

@@ -4,6 +4,7 @@ Revision ID: 0002
 Revises: 0001
 Create Date: 2026-09-30
 """
+
 from alembic import op
 
 revision = "0002"
@@ -13,8 +14,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        """
+    op.execute("""
         -- One row per attempt to charge a cart.
         -- amount and currency are a snapshot of the cart total at the moment of payment.
         -- Status values:
@@ -46,8 +46,7 @@ def upgrade() -> None:
         -- even when a client sends different idempotency keys. Failed attempts do not block a retry.
         CREATE UNIQUE INDEX uq_payments_cart_active ON payments(cart_id)
             WHERE status IN ('pending', 'succeeded');
-        """
-    )
+        """)
 
 
 def downgrade() -> None:
