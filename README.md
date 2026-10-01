@@ -143,8 +143,8 @@ The base schema from the task is applied unchanged by `0001_base_schema.py` from
 ### Payment flow (`shop/payments/service.py`)
 
 1. **Transaction 1.** Lock the cart row (`SELECT ... FOR UPDATE`), so parallel requests for one
-   cart run one after another. Check the idempotency key, validate the cart, pick the payment
-   method, get the total, save a `pending` payment, commit.
+   cart run one after another. Check the idempotency key, validate the cart, get the total,
+   pick the payment method, save a `pending` payment, commit.
 2. **Provider call** outside of any transaction, so no lock or connection is held while waiting
    for the network.
 3. **Transaction 2.** Save the result. On success, mark the cart `checked_out` in the same
