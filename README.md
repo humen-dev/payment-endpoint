@@ -67,6 +67,10 @@ The tests use a real PostgreSQL database (`shop_test`), because the payment logi
 row locks and unique indexes. The test suite runs the migrations itself and empties the tables
 before each test.
 
+The `shop_test` database is created when the PostgreSQL volume is created for the first time.
+If the tests fail with `database "shop_test" does not exist`, the volume is older than this
+setup: recreate it with `docker compose down -v` and start the database again.
+
 * `tests/test_start_payment.py` — requests that reach the provider: success, decline, provider
   errors, idempotency and parallel requests (two threads pay one cart; the card is charged once).
 * `tests/test_start_payment_validation.py` — requests that must be rejected. In this module the
@@ -180,9 +184,10 @@ after a timeout or a lost connection.
   second charge.
 * **Default payment method.** The base schema allows several default methods per user; the newest
   one is used.
-* **Stuck pending payments.** If the provider does not answer, or the process dies between the
-  provider call and transaction 2, the payment stays `pending` and the cart cannot be paid again. In production a reconciliation
-  job would fix such payments using the provider API or webhooks. It is not part of this task.
+* **Stuck pending payments.** If the provider does not answer, or the process dies between
+  the provider call and transaction 2, the payment stays `pending` and the cart cannot be
+  paid again. In production a reconciliation job would fix such payments using the provider
+  API or webhooks. It is not part of this task.
 * **Idempotency keys** do not expire.
 * **Out of scope:** stock reservation and decrement, orders and delivery, refunds,
   the `updated_at` columns of the base tables (they have no trigger; the app sets `updated_at`
