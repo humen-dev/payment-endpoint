@@ -76,6 +76,7 @@ setup: recreate it with `docker compose down -v` and start the database again.
 * `tests/test_start_payment_validation.py` — requests that must be rejected. In this module the
   provider mock fails the test if it is called, so every case also checks that no card is charged.
 * `tests/test_provider.py` — the provider mock.
+* `tests/test_migrations.py` — the migrations and the models describe the same schema.
 
 ## Lint
 
@@ -126,19 +127,31 @@ Errors have one format: `{"error": "cart_not_found", "message": "Cart not found.
 
 ### Schema
 
-`migrations/versions/0002_payments.py` adds the `payments` table. One row is one attempt to
-charge a cart:
+The `Payment` model in `shop/models.py` defines the `payments` table together with its
+constraints and indexes. Migration `0002_payments_table.py` is generated from the models with
+`alembic revision --autogenerate`. One row is one attempt to charge a cart:
 
 * `amount`, `currency` — a snapshot of the cart total at the moment of payment.
 * `status` — `pending` → `succeeded` | `failed`.
 * `payment_method_id` — the card that was charged; `provider_payment_id` / `failure_reason` —
   the provider answer.
-* `idempotency_key` — unique per user (`uq_payments_user_idempotency_key`).
+* `idempotency_key` — `VARCHAR(255)`, unique per user (`uq_payments_user_idempotency_key`).
+  The length is one constant, `IDEMPOTENCY_KEY_MAX_LENGTH`, shared by the model and the
+  request validation.
 * `uq_payments_cart_active` — a partial unique index: at most one `pending` or `succeeded`
   payment per cart. Failed attempts do not block a new attempt.
 
 The base schema from the task is applied unchanged by `0001_base_schema.py` from
-`sql/base_schema.sql`.
+`sql/base_schema.sql`; the models of its tables mirror it, so autogenerate sees no difference.
+
+To change the schema, change the models and generate a migration:
+
+```bash
+alembic revision --autogenerate -m "describe the change"
+```
+
+`tests/test_migrations.py` runs `alembic check` and fails when a model changed but no migration
+was generated for it.
 
 ### Payment flow (`shop/payments/service.py`)
 
