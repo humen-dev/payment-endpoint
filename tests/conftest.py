@@ -20,9 +20,14 @@ DATABASE_URL = TestConfig.SQLALCHEMY_DATABASE_URI
 
 
 @pytest.fixture(scope="session")
-def engine():
-    alembic_config = AlembicConfig("alembic.ini")
-    alembic_config.set_main_option("sqlalchemy.url", DATABASE_URL)
+def alembic_config():
+    config = AlembicConfig("alembic.ini")
+    config.set_main_option("sqlalchemy.url", DATABASE_URL)
+    return config
+
+
+@pytest.fixture(scope="session")
+def engine(alembic_config):
     command.upgrade(alembic_config, "head")
 
     engine = create_engine(DATABASE_URL)
