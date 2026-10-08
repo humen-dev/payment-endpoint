@@ -5,11 +5,10 @@ from flask import Blueprint, jsonify, request
 
 from shop.auth import current_user_id
 from shop.errors import BadRequest
-from shop.models import Payment, PaymentStatus
+from shop.models import IDEMPOTENCY_KEY_MAX_LENGTH, Payment, PaymentStatus
 from shop.payments.service import start_payment
 
 IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
-MAX_IDEMPOTENCY_KEY_LENGTH = 255
 
 payments_blueprint = Blueprint("payments", __name__)
 
@@ -32,11 +31,11 @@ def create_payment(cart_id: uuid.UUID):
 
 def _idempotency_key() -> str:
     key = request.headers.get(IDEMPOTENCY_KEY_HEADER, "").strip()
-    if not 0 < len(key) <= MAX_IDEMPOTENCY_KEY_LENGTH:
+    if not 0 < len(key) <= IDEMPOTENCY_KEY_MAX_LENGTH:
         raise BadRequest(
             "invalid_idempotency_key",
             f"Send the {IDEMPOTENCY_KEY_HEADER} header "
-            f"(1 to {MAX_IDEMPOTENCY_KEY_LENGTH} characters).",
+            f"(1 to {IDEMPOTENCY_KEY_MAX_LENGTH} characters).",
         )
     return key
 

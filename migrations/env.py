@@ -3,7 +3,9 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine
 
+import shop.models  # noqa: F401 (registers the models on `db.metadata`)
 from shop.config import Config
+from shop.extensions import db
 
 config = context.config
 
@@ -17,7 +19,9 @@ def database_url() -> str:
 
 
 def run_migrations_offline() -> None:
-    context.configure(url=database_url(), literal_binds=True)
+    context.configure(
+        url=database_url(), target_metadata=db.metadata, literal_binds=True
+    )
     with context.begin_transaction():
         context.run_migrations()
 
@@ -25,7 +29,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     engine = create_engine(database_url())
     with engine.connect() as connection:
-        context.configure(connection=connection)
+        context.configure(connection=connection, target_metadata=db.metadata)
         with context.begin_transaction():
             context.run_migrations()
     engine.dispose()
